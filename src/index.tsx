@@ -161,6 +161,51 @@ app.get('/api/leaderboard/:period', async (c) => {
   return c.json(results)
 })
 
+// Duplicate pricing
+app.post('/api/pricings/:id/duplicate', async (c) => {
+  const id = c.req.param('id')
+  const { agent_id } = await c.req.json()
+  
+  // Get original pricing
+  const { results } = await c.env.DB.prepare(`
+    SELECT * FROM pricings WHERE id = ?
+  `).bind(id).all()
+  
+  if (results.length === 0) {
+    return c.json({ success: false, error: 'Pricing not found' }, 404)
+  }
+  
+  const original = results[0] as any
+  
+  // Create duplicate
+  const result = await c.env.DB.prepare(`
+    INSERT INTO pricings (agent_id, title, currency, items, total_cost, markup_percentage, final_price, installments)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    agent_id, // New agent ID
+    original.title + ' (עותק)',
+    original.currency,
+    original.items,
+    original.total_cost,
+    original.markup_percentage,
+    original.final_price,
+    original.installments
+  ).run()
+  
+  return c.json({ id: result.meta.last_row_id, success: true })
+})
+
+// Delete pricing
+app.delete('/api/pricings/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  await c.env.DB.prepare(`
+    DELETE FROM pricings WHERE id = ?
+  `).bind(id).run()
+  
+  return c.json({ success: true })
+})
+
 // ============================================
 // HTML Pages
 // ============================================
@@ -255,7 +300,7 @@ app.get('/agent/:name', (c) => {
             </a>
           </div>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <button onclick="openCalculator()" 
                     class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 md:py-4 rounded-lg text-base md:text-xl">
               <i class="fas fa-calculator ml-2"></i>
@@ -265,6 +310,11 @@ app.get('/agent/:name', (c) => {
                     class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 md:py-4 rounded-lg text-base md:text-xl">
               <i class="fas fa-handshake ml-2"></i>
               רשום עסקה
+            </button>
+            <button onclick="showMyPricings()" 
+                    class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 md:py-4 rounded-lg text-base md:text-xl">
+              <i class="fas fa-folder ml-2"></i>
+              התמחורים שלי
             </button>
           </div>
         </div>
@@ -328,6 +378,20 @@ app.get('/agent/:name', (c) => {
               <i class="fas fa-save ml-2"></i>
               שמור עסקה
             </button>
+          </div>
+        </div>
+        
+        <!-- My Pricings -->
+        <div id="myPricings" class="hidden bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl md:text-2xl font-bold">התמחורים שלי</h2>
+            <button onclick="closeMyPricings()" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times text-2xl"></i>
+            </button>
+          </div>
+          
+          <div id="myPricingsList" class="space-y-4">
+            <div class="text-center text-gray-500">טוען...</div>
           </div>
         </div>
       </div>
@@ -397,6 +461,89 @@ app.get('/agent/:name', (c) => {
           } catch (error) {
             console.error('Failed to save deal:', error);
             alert('שגיאה ברישום העסקה!');
+          }
+        }
+        
+        async function showMyPricings() {
+          document.getElementById('myPricings').classList.remove('hidden');
+          document.getElementById('calculator').classList.add('hidden');
+          document.getElementById('dealForm').classList.add('hidden');
+          
+          await loadMyPricings();
+        }
+        
+        function closeMyPricings() {
+          document.getElementById('myPricings').classList.add('hidden');
+        }
+        
+        async function loadMyPricings() {
+          try {
+            const response = await axios.get('/api/pricings/' + AGENT_ID);
+            const pricings = response.data;
+            
+            const container = document.getElementById('myPricingsList');
+            if (pricings.length === 0) {
+              container.innerHTML = '<div class="text-center text-gray-500 py-8">אין תמחורים עדיין</div>';
+              return;
+            }
+            
+            container.innerHTML = pricings.map(pricing => {
+              const itemsHTML = pricing.items.map(item => {
+                const detailsHTML = item.details ? '<span class="text-gray-600 text-xs md:text-sm block md:inline md:mr-2">(' + item.details + ')</span>' : '';
+                return '<div class="flex justify-between text-sm md:text-base">' +
+                       '<div>' +
+                         '<span class="font-bold">' + item.name + '</span>' +
+                         detailsHTML +
+                       '</div>' +
+                       '<span>' + item.amount + ' ' + item.currency + '</span>' +
+                       '</div>';
+              }).join('');
+              
+              return '<div class="bg-gray-50 rounded-lg border-2 p-4 md:p-6">' +
+                '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">' +
+                  '<div>' +
+                    '<h3 class="text-xl md:text-2xl font-bold text-blue-900">' + pricing.title + '</h3>' +
+                    '<p class="text-sm md:text-base text-gray-600">' +
+                      '<i class="fas fa-calendar ml-1"></i>' +
+                      new Date(pricing.created_at).toLocaleDateString('he-IL') +
+                    '</p>' +
+                  '</div>' +
+                  '<div class="text-left md:text-right">' +
+                    '<div class="text-2xl md:text-3xl font-bold text-green-900">' +
+                      pricing.final_price.toFixed(2) + ' ' + pricing.currency +
+                    '</div>' +
+                    '<div class="text-xs md:text-sm text-gray-600">תמחור: ' + pricing.markup_percentage + '%</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="border-t pt-4 mb-4">' +
+                  '<h4 class="font-bold mb-2 text-sm md:text-base">מרכיבים:</h4>' +
+                  '<div class="space-y-2">' +
+                    itemsHTML +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex flex-wrap gap-2 pt-4 border-t">' +
+                  '<button onclick="deleteMyPricing(' + pricing.id + ')" ' +
+                    'class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-trash ml-1"></i> מחק' +
+                  '</button>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+          } catch (error) {
+            console.error('Failed to load my pricings:', error);
+          }
+        }
+        
+        async function deleteMyPricing(pricingId) {
+          if (!confirm('בטוח למחוק את התמחור?')) return;
+          
+          try {
+            await axios.delete('/api/pricings/' + pricingId);
+            alert('התמחור נמחק בהצלחה!');
+            loadMyPricings();
+          } catch (error) {
+            console.error('Failed to delete pricing:', error);
+            alert('שגיאה במחיקה!');
           }
         }
         
@@ -480,16 +627,66 @@ app.get('/pricings', (c) => {
                     '<div class="text-xs md:text-sm text-gray-600">תמחור: ' + pricing.markup_percentage + '%</div>' +
                   '</div>' +
                 '</div>' +
-                '<div class="border-t pt-4">' +
+                '<div class="border-t pt-4 mb-4">' +
                   '<h4 class="font-bold mb-2 text-sm md:text-base">מרכיבים:</h4>' +
                   '<div class="space-y-2">' +
                     itemsHTML +
                   '</div>' +
                 '</div>' +
+                '<div class="flex flex-wrap gap-2 pt-4 border-t">' +
+                  '<button onclick="duplicatePricing(' + pricing.id + ')" ' +
+                    'class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-copy ml-1"></i> שכפל' +
+                  '</button>' +
+                  '<button onclick="deletePricing(' + pricing.id + ')" ' +
+                    'class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-trash ml-1"></i> מחק' +
+                  '</button>' +
+                '</div>' +
               '</div>';
             }).join('');
           } catch (error) {
             console.error('Failed to load pricings:', error);
+          }
+        }
+        
+        async function duplicatePricing(pricingId) {
+          const agentName = prompt('לאיזה סוכן לשכפל? הזן שם:');
+          if (!agentName) return;
+          
+          try {
+            // Get agent ID
+            const agentsResponse = await axios.get('/api/agents');
+            const agent = agentsResponse.data.find(a => a.name === agentName);
+            
+            if (!agent) {
+              alert('סוכן לא נמצא!');
+              return;
+            }
+            
+            // Duplicate pricing
+            await axios.post('/api/pricings/' + pricingId + '/duplicate', {
+              agent_id: agent.id
+            });
+            
+            alert('התמחור שוכפל בהצלחה!');
+            loadPricings();
+          } catch (error) {
+            console.error('Failed to duplicate pricing:', error);
+            alert('שגיאה בשכפול!');
+          }
+        }
+        
+        async function deletePricing(pricingId) {
+          if (!confirm('בטוח למחוק את התמחור?')) return;
+          
+          try {
+            await axios.delete('/api/pricings/' + pricingId);
+            alert('התמחור נמחק בהצלחה!');
+            loadPricings();
+          } catch (error) {
+            console.error('Failed to delete pricing:', error);
+            alert('שגיאה במחיקה!');
           }
         }
         
