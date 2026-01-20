@@ -11,9 +11,9 @@
   - שיתוף תמחורים בין סוכנים
 
 ## כתובות URL
-- **פיתוח (Sandbox)**: https://3000-iok7h2j47wltrk2dsd7hh-02b9cc79.sandbox.novita.ai
-- **ייצור (Production)**: טרם נפרס
+- **ייצור (Production)**: https://951bedb9.travel-agents-calc.pages.dev ✅
 - **GitHub**: https://github.com/troncho111/travel-agents-calculator
+- **פיתוח (Sandbox)**: https://3000-iok7h2j47wltrk2dsd7hh-02b9cc79.sandbox.novita.ai
 
 ## ארכיטקטורת נתונים
 ### מודלי נתונים:
