@@ -132,6 +132,49 @@ app.post('/api/deals', async (c) => {
   return c.json({ id: result.meta.last_row_id, success: true })
 })
 
+// Get agent deals
+app.get('/api/deals/:agentId', async (c) => {
+  const agentId = c.req.param('agentId')
+  
+  const { results } = await c.env.DB.prepare(`
+    SELECT * FROM deals WHERE agent_id = ? ORDER BY deal_date DESC
+  `).bind(agentId).all()
+  
+  return c.json(results)
+})
+
+// Update deal
+app.put('/api/deals/:id', async (c) => {
+  const id = c.req.param('id')
+  const data = await c.req.json()
+  
+  await c.env.DB.prepare(`
+    UPDATE deals 
+    SET sale_amount = ?, sale_currency = ?, profit_amount = ?, profit_currency = ?, deal_date = ?
+    WHERE id = ?
+  `).bind(
+    data.sale_amount,
+    data.sale_currency,
+    data.profit_amount,
+    data.profit_currency,
+    data.deal_date,
+    id
+  ).run()
+  
+  return c.json({ success: true })
+})
+
+// Delete deal
+app.delete('/api/deals/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  await c.env.DB.prepare(`
+    DELETE FROM deals WHERE id = ?
+  `).bind(id).run()
+  
+  return c.json({ success: true })
+})
+
 // Get leaderboard
 app.get('/api/leaderboard/:period', async (c) => {
   const period = c.req.param('period') // 'day', 'week', 'month'
@@ -300,7 +343,7 @@ app.get('/agent/:name', (c) => {
             </a>
           </div>
           
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             <button onclick="openCalculator()" 
                     class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 md:py-4 rounded-lg text-base md:text-xl">
               <i class="fas fa-calculator ml-2"></i>
@@ -315,6 +358,11 @@ app.get('/agent/:name', (c) => {
                     class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-3 md:py-4 rounded-lg text-base md:text-xl">
               <i class="fas fa-folder ml-2"></i>
               התמחורים שלי
+            </button>
+            <button onclick="showMyDeals()" 
+                    class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 md:py-4 rounded-lg text-base md:text-xl">
+              <i class="fas fa-chart-line ml-2"></i>
+              העסקאות שלי
             </button>
           </div>
         </div>
@@ -391,6 +439,20 @@ app.get('/agent/:name', (c) => {
           </div>
           
           <div id="myPricingsList" class="space-y-4">
+            <div class="text-center text-gray-500">טוען...</div>
+          </div>
+        </div>
+        
+        <!-- My Deals -->
+        <div id="myDeals" class="hidden bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div class="flex justify-between items-center mb-4">
+            <h2 class="text-xl md:text-2xl font-bold">העסקאות שלי</h2>
+            <button onclick="closeMyDeals()" class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-times text-2xl"></i>
+            </button>
+          </div>
+          
+          <div id="myDealsList" class="space-y-4">
             <div class="text-center text-gray-500">טוען...</div>
           </div>
         </div>
@@ -543,6 +605,151 @@ app.get('/agent/:name', (c) => {
             loadMyPricings();
           } catch (error) {
             console.error('Failed to delete pricing:', error);
+            alert('שגיאה במחיקה!');
+          }
+        }
+        
+        async function showMyDeals() {
+          document.getElementById('myDeals').classList.remove('hidden');
+          document.getElementById('calculator').classList.add('hidden');
+          document.getElementById('dealForm').classList.add('hidden');
+          document.getElementById('myPricings').classList.add('hidden');
+          
+          await loadMyDeals();
+        }
+        
+        function closeMyDeals() {
+          document.getElementById('myDeals').classList.add('hidden');
+        }
+        
+        async function loadMyDeals() {
+          try {
+            const response = await axios.get('/api/deals/' + AGENT_ID);
+            const deals = response.data;
+            
+            const container = document.getElementById('myDealsList');
+            if (deals.length === 0) {
+              container.innerHTML = '<div class="text-center text-gray-500 py-8">אין עסקאות עדיין</div>';
+              return;
+            }
+            
+            container.innerHTML = deals.map(deal => {
+              return '<div class="bg-gray-50 rounded-lg border-2 p-4 md:p-6">' +
+                '<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">' +
+                  '<div class="flex-1">' +
+                    '<div class="text-2xl md:text-3xl font-bold text-green-900 mb-2">' +
+                      deal.sale_amount.toFixed(2) + ' ' + deal.sale_currency +
+                    '</div>' +
+                    '<div class="text-lg font-bold text-blue-700">' +
+                      'רווח: ' + deal.profit_amount.toFixed(2) + ' ' + deal.profit_currency +
+                    '</div>' +
+                    '<p class="text-sm md:text-base text-gray-600 mt-2">' +
+                      '<i class="fas fa-calendar ml-1"></i>' +
+                      new Date(deal.deal_date).toLocaleDateString('he-IL') +
+                    '</p>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="flex flex-wrap gap-2 pt-4 border-t">' +
+                  '<button onclick="editDeal(' + deal.id + ')" ' +
+                    'class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-edit ml-1"></i> ערוך' +
+                  '</button>' +
+                  '<button onclick="deleteMyDeal(' + deal.id + ')" ' +
+                    'class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-trash ml-1"></i> מחק' +
+                  '</button>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+          } catch (error) {
+            console.error('Failed to load my deals:', error);
+          }
+        }
+        
+        async function editDeal(dealId) {
+          try {
+            const response = await axios.get('/api/deals/' + AGENT_ID);
+            const deal = response.data.find(d => d.id === dealId);
+            
+            if (!deal) {
+              alert('עסקה לא נמצאה!');
+              return;
+            }
+            
+            // Fill form
+            document.getElementById('saleAmount').value = deal.sale_amount;
+            document.getElementById('saleCurrency').value = deal.sale_currency;
+            document.getElementById('profitAmount').value = deal.profit_amount;
+            document.getElementById('profitCurrency').value = deal.profit_currency;
+            document.getElementById('dealDate').value = deal.deal_date;
+            
+            // Store deal ID for update
+            window.EDIT_DEAL_ID = dealId;
+            
+            // Open deal form
+            closeMyDeals();
+            document.getElementById('dealForm').classList.remove('hidden');
+            
+            // Change button text
+            const saveBtn = document.querySelector('#dealForm button[onclick="saveDeal()"]');
+            saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> עדכן עסקה';
+            saveBtn.setAttribute('onclick', 'updateDeal()');
+          } catch (error) {
+            console.error('Failed to edit deal:', error);
+            alert('שגיאה בטעינת העסקה!');
+          }
+        }
+        
+        async function updateDeal() {
+          const saleAmount = parseFloat(document.getElementById('saleAmount').value) || 0;
+          const profitAmount = parseFloat(document.getElementById('profitAmount').value) || 0;
+          const saleCurrency = document.getElementById('saleCurrency').value;
+          const profitCurrency = document.getElementById('profitCurrency').value;
+          const dealDate = document.getElementById('dealDate').value;
+          
+          if (saleAmount === 0) {
+            alert('אנא הזן סכום מכירה!');
+            return;
+          }
+          
+          try {
+            await axios.put('/api/deals/' + window.EDIT_DEAL_ID, {
+              sale_amount: saleAmount,
+              sale_currency: saleCurrency,
+              profit_amount: profitAmount,
+              profit_currency: profitCurrency,
+              deal_date: dealDate
+            });
+            
+            alert('העסקה עודכנה בהצלחה! ✅');
+            closeDealForm();
+            
+            // Reset button
+            const saveBtn = document.querySelector('#dealForm button[onclick="updateDeal()"]');
+            saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> שמור עסקה';
+            saveBtn.setAttribute('onclick', 'saveDeal()');
+            
+            // Clear EDIT_DEAL_ID
+            delete window.EDIT_DEAL_ID;
+            
+            // Reset form
+            document.getElementById('saleAmount').value = '';
+            document.getElementById('profitAmount').value = '';
+          } catch (error) {
+            console.error('Failed to update deal:', error);
+            alert('שגיאה בעדכון העסקה!');
+          }
+        }
+        
+        async function deleteMyDeal(dealId) {
+          if (!confirm('בטוח למחוק את העסקה?')) return;
+          
+          try {
+            await axios.delete('/api/deals/' + dealId);
+            alert('העסקה נמחקה בהצלחה!');
+            loadMyDeals();
+          } catch (error) {
+            console.error('Failed to delete deal:', error);
             alert('שגיאה במחיקה!');
           }
         }
