@@ -78,6 +78,29 @@ app.post('/api/pricings', async (c) => {
   return c.json({ id: result.meta.last_row_id, success: true })
 })
 
+// Update pricing
+app.put('/api/pricings/:id', async (c) => {
+  const id = c.req.param('id')
+  const data = await c.req.json()
+  
+  await c.env.DB.prepare(`
+    UPDATE pricings 
+    SET title = ?, currency = ?, items = ?, total_cost = ?, markup_percentage = ?, final_price = ?, installments = ?
+    WHERE id = ?
+  `).bind(
+    data.title,
+    data.currency,
+    JSON.stringify(data.items),
+    data.total_cost,
+    data.markup_percentage,
+    data.final_price,
+    data.installments,
+    id
+  ).run()
+  
+  return c.json({ success: true })
+})
+
 // Exchange rates
 app.get('/api/exchange-rates/:base', async (c) => {
   const base = c.req.param('base')
@@ -619,8 +642,91 @@ app.get('/agent/:name', (c) => {
         }
         
         async function editMyPricing(pricingId) {
-          alert('עריכת תמחור תתווסף בקרוב! 🚀');
-          // TODO: Implement edit pricing
+          try {
+            const response = await axios.get('/api/pricings/' + AGENT_ID);
+            const pricing = response.data.find(p => p.id === pricingId);
+            
+            if (!pricing) {
+              alert('תמחור לא נמצא!');
+              return;
+            }
+            
+            // Close my pricings and open calculator
+            closeMyPricings();
+            document.getElementById('calculator').classList.remove('hidden');
+            
+            // Load calculator form
+            loadCalculatorForm();
+            
+            // Wait for form to load
+            setTimeout(() => {
+              // Fill form with existing data
+              document.getElementById('title').value = pricing.title;
+              document.getElementById('baseCurrency').value = pricing.currency;
+              document.getElementById('markup').value = pricing.markup_percentage;
+              document.getElementById('installments').value = pricing.installments;
+              
+              // Load items
+              window.items = pricing.items;
+              renderItems();
+              recalculate();
+              
+              // Store pricing ID for update
+              window.EDIT_PRICING_ID = pricingId;
+              
+              // Change save button to update button
+              const saveBtn = document.querySelector('#calculator button[onclick="savePricing()"]');
+              if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> עדכן תמחור';
+                saveBtn.setAttribute('onclick', 'updatePricing()');
+              }
+            }, 500);
+          } catch (error) {
+            console.error('Failed to edit pricing:', error);
+            alert('שגיאה בטעינת התמחור!');
+          }
+        }
+        
+        async function updatePricing() {
+          const title = document.getElementById('title').value;
+          if (!title) {
+            alert('אנא הזן שם לחבילה!');
+            return;
+          }
+          
+          const totalCost = parseFloat(document.getElementById('totalCost').textContent) || 0;
+          const finalPrice = parseFloat(document.getElementById('finalPrice').textContent) || 0;
+          const markup = parseFloat(document.getElementById('markup').value) || 0;
+          const installments = parseInt(document.getElementById('installments').value) || 1;
+          const currency = document.getElementById('baseCurrency').value;
+          
+          try {
+            await axios.put('/api/pricings/' + window.EDIT_PRICING_ID, {
+              title,
+              currency,
+              items: window.items,
+              total_cost: totalCost,
+              markup_percentage: markup,
+              final_price: finalPrice,
+              installments
+            });
+            
+            alert('התמחור עודכן בהצלחה! ✅');
+            closeCalculator();
+            
+            // Reset button
+            const saveBtn = document.querySelector('#calculator button[onclick="updatePricing()"]');
+            if (saveBtn) {
+              saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> שמור תמחור';
+              saveBtn.setAttribute('onclick', 'savePricing()');
+            }
+            
+            // Clear EDIT_PRICING_ID
+            delete window.EDIT_PRICING_ID;
+          } catch (error) {
+            console.error('Failed to update:', error);
+            alert('שגיאה בעדכון!');
+          }
         }
         
         async function showMyDeals() {
