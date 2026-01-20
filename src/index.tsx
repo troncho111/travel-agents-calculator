@@ -554,6 +554,11 @@ app.get('/agent/:name', (c) => {
         }
         
         async function showMyPricings() {
+          if (!AGENT_ID) {
+            alert('טוען נתוני סוכן...');
+            return;
+          }
+          
           document.getElementById('myPricings').classList.remove('hidden');
           document.getElementById('calculator').classList.add('hidden');
           document.getElementById('dealForm').classList.add('hidden');
@@ -655,8 +660,12 @@ app.get('/agent/:name', (c) => {
             closeMyPricings();
             document.getElementById('calculator').classList.remove('hidden');
             
-            // Load calculator form
-            loadCalculatorForm();
+            // Check if calculator form is already loaded
+            const calcContent = document.querySelector('#calculator > div.space-y-6');
+            if (!calcContent) {
+              // Load calculator form if not loaded
+              loadCalculatorForm();
+            }
             
             // Wait for form to load
             setTimeout(() => {
@@ -680,7 +689,7 @@ app.get('/agent/:name', (c) => {
                 saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> עדכן תמחור';
                 saveBtn.setAttribute('onclick', 'updatePricing()');
               }
-            }, 500);
+            }, 100);
           } catch (error) {
             console.error('Failed to edit pricing:', error);
             alert('שגיאה בטעינת התמחור!');
@@ -730,6 +739,11 @@ app.get('/agent/:name', (c) => {
         }
         
         async function showMyDeals() {
+          if (!AGENT_ID) {
+            alert('טוען נתוני סוכן...');
+            return;
+          }
+          
           document.getElementById('myDeals').classList.remove('hidden');
           document.getElementById('calculator').classList.add('hidden');
           document.getElementById('dealForm').classList.add('hidden');
