@@ -675,8 +675,8 @@ app.get('/agent/:name', (c) => {
               document.getElementById('markup').value = pricing.markup_percentage;
               document.getElementById('installments').value = pricing.installments;
               
-              // Load items
-              window.items = pricing.items;
+              // Load items - update global items variable from calculator.js
+              items = pricing.items;
               renderItems();
               recalculate();
               
@@ -689,7 +689,7 @@ app.get('/agent/:name', (c) => {
                 saveBtn.innerHTML = '<i class="fas fa-save ml-2"></i> עדכן תמחור';
                 saveBtn.setAttribute('onclick', 'updatePricing()');
               }
-            }, 100);
+            }, 300);
           } catch (error) {
             console.error('Failed to edit pricing:', error);
             alert('שגיאה בטעינת התמחור!');
