@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "webapp",
+  "name": "travel-agents-calc",
   "compatibility_date": "2026-01-20",
   "pages_build_output_dir": "./dist",
   "compatibility_flags": ["nodejs_compat"],
@@ -8,7 +8,7 @@
     {
       "binding": "DB",
       "database_name": "webapp-production",
-      "database_id": "placeholder"
+      "database_id": "9f79abf8-3fe8-45ac-81ba-9e9ddfb4b4a3"
     }
   ]
 }
