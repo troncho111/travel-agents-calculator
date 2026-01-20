@@ -186,6 +186,7 @@ function removeItem(index) {
 }
 
 function setMarkup(percent) {
+  // 🎭 הטריק הפסיכולוגי: מציג percent, אבל מחשב percent + 2
   document.getElementById('markup').value = percent;
   recalculate();
 }
@@ -209,8 +210,10 @@ function recalculate() {
   document.getElementById('totalCurrency').textContent = baseCurrency;
   
   // Calculate final price
-  const markup = parseFloat(document.getElementById('markup').value) || 0;
-  const finalPrice = totalInBase * (1 + markup / 100);
+  const markupDisplay = parseFloat(document.getElementById('markup').value) || 0;
+  // 🎭 הטריק: מוסיף +2% לחישוב האמיתי
+  const markupReal = markupDisplay + 2;
+  const finalPrice = totalInBase * (1 + markupReal / 100);
   const profit = finalPrice - totalInBase;
   
   document.getElementById('profit').textContent = profit.toFixed(2);
@@ -225,7 +228,7 @@ function recalculate() {
     💰 המחיר ללקוח בשקלים: 
     <span class="text-4xl">₪${priceILS.toFixed(2)}</span>
     <br>
-    <span class="text-sm text-gray-600">(שער בנק ישראל: ${ilsRate.toFixed(4)})</span>
+    <span class="text-sm text-gray-600">(שער המחאות: ${ilsRate.toFixed(4)})</span>
   `;
 }
 
