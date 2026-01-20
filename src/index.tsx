@@ -476,6 +476,8 @@ app.get('/agent/:name', (c) => {
         function openCalculator() {
           document.getElementById('calculator').classList.remove('hidden');
           document.getElementById('dealForm').classList.add('hidden');
+          document.getElementById('myPricings').classList.add('hidden');
+          document.getElementById('myDeals').classList.add('hidden');
           loadCalculatorForm();
         }
         
@@ -486,6 +488,8 @@ app.get('/agent/:name', (c) => {
         function openDealForm() {
           document.getElementById('dealForm').classList.remove('hidden');
           document.getElementById('calculator').classList.add('hidden');
+          document.getElementById('myPricings').classList.add('hidden');
+          document.getElementById('myDeals').classList.add('hidden');
         }
         
         function closeDealForm() {
@@ -530,6 +534,7 @@ app.get('/agent/:name', (c) => {
           document.getElementById('myPricings').classList.remove('hidden');
           document.getElementById('calculator').classList.add('hidden');
           document.getElementById('dealForm').classList.add('hidden');
+          document.getElementById('myDeals').classList.add('hidden');
           
           await loadMyPricings();
         }
@@ -584,6 +589,10 @@ app.get('/agent/:name', (c) => {
                   '</div>' +
                 '</div>' +
                 '<div class="flex flex-wrap gap-2 pt-4 border-t">' +
+                  '<button onclick="editMyPricing(' + pricing.id + ')" ' +
+                    'class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-edit ml-1"></i> ערוך' +
+                  '</button>' +
                   '<button onclick="deleteMyPricing(' + pricing.id + ')" ' +
                     'class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
                     '<i class="fas fa-trash ml-1"></i> מחק' +
@@ -607,6 +616,11 @@ app.get('/agent/:name', (c) => {
             console.error('Failed to delete pricing:', error);
             alert('שגיאה במחיקה!');
           }
+        }
+        
+        async function editMyPricing(pricingId) {
+          alert('עריכת תמחור תתווסף בקרוב! 🚀');
+          // TODO: Implement edit pricing
         }
         
         async function showMyDeals() {

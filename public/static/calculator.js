@@ -244,7 +244,11 @@ function calculateInstallments() {
   let totalWithInterest = priceILS;
   let interestAmount = 0;
   
-  if (installments >= 3) {
+  if (installments >= 6) {
+    interestRate = 7;
+    totalWithInterest = priceILS * 1.07;
+    interestAmount = totalWithInterest - priceILS;
+  } else if (installments >= 3) {
     interestRate = 3;
     totalWithInterest = priceILS * 1.03;
     interestAmount = totalWithInterest - priceILS;
@@ -263,7 +267,7 @@ function calculateInstallments() {
     `;
   } else {
     interestInfo.innerHTML = `
-      <span class="text-orange-600 font-bold">ריבית: 3% (₪${interestAmount.toFixed(2)})</span><br>
+      <span class="text-orange-600 font-bold">ריבית: ${interestRate}% (₪${interestAmount.toFixed(2)})</span><br>
       תשלום חודשי: <span class="font-bold text-2xl">₪${monthlyPayment.toFixed(2)}</span>
     `;
   }
@@ -297,7 +301,7 @@ function calculateInstallments() {
           <tr class="border-b border-blue-200">
             <td class="p-3 font-bold border border-blue-300">כל תשלום לפני ריבית</td>
             <td class="p-3 text-center border border-blue-300">₪${perPaymentBase.toFixed(1)}</td>
-            <td class="p-3 text-center text-red-600 font-bold border border-blue-300">לא לעדכן כאן!</td>
+            <td class="p-3 text-center text-gray-600 border border-blue-300">קרן בלבד</td>
           </tr>
   `;
   
@@ -306,7 +310,7 @@ function calculateInstallments() {
           <tr class="bg-yellow-50 border-b border-blue-200">
             <td class="p-3 font-bold border border-blue-300">סה״כ לתשלום</td>
             <td class="p-3 text-center font-bold text-orange-600 border border-blue-300">₪${totalWithInterest.toFixed(0)}</td>
-            <td class="p-3 text-center text-orange-600 border border-blue-300">+3% ריבית</td>
+            <td class="p-3 text-center text-orange-600 border border-blue-300">+${interestRate}% ריבית</td>
           </tr>
           <tr class="bg-yellow-50 border-b border-blue-200">
             <td class="p-3 font-bold border border-blue-300">ריבית בכל תשלום</td>
