@@ -713,7 +713,7 @@ app.get('/agent/:name', (c) => {
             await axios.put('/api/pricings/' + window.EDIT_PRICING_ID, {
               title,
               currency,
-              items: window.items,
+              items: items,
               total_cost: totalCost,
               markup_percentage: markup,
               final_price: finalPrice,
@@ -975,6 +975,10 @@ app.get('/pricings', (c) => {
                   '</div>' +
                 '</div>' +
                 '<div class="flex flex-wrap gap-2 pt-4 border-t">' +
+                  '<button onclick="editSharedPricing(' + pricing.id + ', \'' + pricing.agent_name + '\')" ' +
+                    'class="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
+                    '<i class="fas fa-edit ml-1"></i> ערוך' +
+                  '</button>' +
                   '<button onclick="duplicatePricing(' + pricing.id + ')" ' +
                     'class="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
                     '<i class="fas fa-copy ml-1"></i> שכפל' +
@@ -989,6 +993,11 @@ app.get('/pricings', (c) => {
           } catch (error) {
             console.error('Failed to load pricings:', error);
           }
+        }
+        
+        async function editSharedPricing(pricingId, agentName) {
+          alert('עריכת תמחור משותף תעביר אותך לדף הסוכן ' + agentName);
+          window.location.href = '/agent/' + encodeURIComponent(agentName) + '?edit=' + pricingId;
         }
         
         async function duplicatePricing(pricingId) {
