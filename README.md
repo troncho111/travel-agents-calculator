@@ -13,7 +13,7 @@
 ## כתובות URL
 - **פיתוח (Sandbox)**: https://3000-iok7h2j47wltrk2dsd7hh-02b9cc79.sandbox.novita.ai
 - **ייצור (Production)**: טרם נפרס
-- **GitHub**: טרם מחובר
+- **GitHub**: https://github.com/troncho111/travel-agents-calculator
 
 ## ארכיטקטורת נתונים
 ### מודלי נתונים:
