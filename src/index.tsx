@@ -24,6 +24,66 @@ app.get('/api/agents', async (c) => {
   return c.json(results)
 })
 
+// Add new agent
+app.post('/api/agents', async (c) => {
+  const { name } = await c.req.json()
+  
+  if (!name || name.trim() === '') {
+    return c.json({ error: 'Agent name is required' }, 400)
+  }
+  
+  const result = await c.env.DB.prepare(`
+    INSERT INTO agents (name) VALUES (?)
+  `).bind(name.trim()).run()
+  
+  return c.json({ id: result.meta.last_row_id, name, success: true })
+})
+
+// Update agent
+app.put('/api/agents/:id', async (c) => {
+  const id = c.req.param('id')
+  const { name } = await c.req.json()
+  
+  if (!name || name.trim() === '') {
+    return c.json({ error: 'Agent name is required' }, 400)
+  }
+  
+  await c.env.DB.prepare(`
+    UPDATE agents SET name = ? WHERE id = ?
+  `).bind(name.trim(), id).run()
+  
+  return c.json({ success: true })
+})
+
+// Delete agent
+app.delete('/api/agents/:id', async (c) => {
+  const id = c.req.param('id')
+  
+  // Check if agent has pricings or deals
+  const { results: pricings } = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM pricings WHERE agent_id = ?'
+  ).bind(id).all()
+  
+  const { results: deals } = await c.env.DB.prepare(
+    'SELECT COUNT(*) as count FROM deals WHERE agent_id = ?'
+  ).bind(id).all()
+  
+  const pricingCount = (pricings[0] as any).count
+  const dealCount = (deals[0] as any).count
+  
+  if (pricingCount > 0 || dealCount > 0) {
+    return c.json({ 
+      error: 'Cannot delete agent with existing pricings or deals',
+      pricings: pricingCount,
+      deals: dealCount
+    }, 400)
+  }
+  
+  await c.env.DB.prepare('DELETE FROM agents WHERE id = ?').bind(id).run()
+  
+  return c.json({ success: true })
+})
+
 // Get agent pricings
 app.get('/api/pricings/:agentId', async (c) => {
   const agentId = c.req.param('agentId')
@@ -304,6 +364,10 @@ app.get('/', (c) => {
           <a href="/leaderboard" class="bg-white hover:bg-yellow-50 px-4 md:px-6 py-2 md:py-3 rounded-lg shadow font-bold text-sm md:text-base">
             <i class="fas fa-trophy ml-1 md:ml-2"></i>
             לוח תחרות
+          </a>
+          <a href="/manage-agents" class="bg-white hover:bg-green-50 px-4 md:px-6 py-2 md:py-3 rounded-lg shadow font-bold text-sm md:text-base">
+            <i class="fas fa-users-cog ml-1 md:ml-2"></i>
+            ניהול סוכנים
           </a>
         </div>
         
@@ -1165,6 +1229,176 @@ app.get('/leaderboard', (c) => {
         }
         
         loadLeaderboard('day');
+      </script>
+    </body>
+    </html>
+  `)
+})
+
+// Manage Agents Page
+app.get('/manage-agents', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="he" dir="rtl">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>ניהול סוכנים</title>
+      <script src="https://cdn.tailwindcss.com"></script>
+      <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+      <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    </head>
+    <body class="bg-gray-100 p-2 md:p-4">
+      <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl md:text-3xl font-bold text-blue-900">
+              <i class="fas fa-users-cog ml-2"></i>
+              ניהול סוכנים
+            </h1>
+            <a href="/" class="bg-blue-500 hover:bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg font-bold text-sm md:text-base">
+              <i class="fas fa-home ml-2"></i>
+              חזרה לדף הבית
+            </a>
+          </div>
+        </div>
+        
+        <!-- Add Agent Form -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-4 md:mb-6">
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-user-plus ml-2"></i>
+            הוסף סוכן חדש
+          </h2>
+          <div class="flex gap-2">
+            <input type="text" id="newAgentName" 
+                   class="flex-1 border-2 border-blue-300 rounded-lg p-3 text-lg" 
+                   placeholder="שם הסוכן החדש...">
+            <button onclick="addAgent()" 
+                    class="bg-green-500 hover:bg-green-600 text-white font-bold px-6 rounded-lg whitespace-nowrap">
+              <i class="fas fa-plus ml-2"></i>
+              הוסף
+            </button>
+          </div>
+        </div>
+        
+        <!-- Agents List -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6">
+          <h2 class="text-xl font-bold mb-4">
+            <i class="fas fa-list ml-2"></i>
+            רשימת סוכנים
+          </h2>
+          <div id="agentsList" class="space-y-3">
+            <div class="text-center text-gray-500">טוען...</div>
+          </div>
+        </div>
+      </div>
+      
+      <script>
+        async function loadAgents() {
+          try {
+            const response = await axios.get('/api/agents');
+            const agents = response.data;
+            
+            const container = document.getElementById('agentsList');
+            if (agents.length === 0) {
+              container.innerHTML = '<div class="text-center text-gray-500 py-8">אין סוכנים</div>';
+              return;
+            }
+            
+            container.innerHTML = agents.map(agent => \`
+              <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border-2 border-gray-200 hover:border-blue-300">
+                <div class="flex items-center gap-4">
+                  <i class="fas fa-user-circle text-3xl text-blue-500"></i>
+                  <div>
+                    <div class="text-lg font-bold">\${agent.name}</div>
+                    <div class="text-sm text-gray-600">ID: \${agent.id}</div>
+                  </div>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="editAgent(\${agent.id}, '\${agent.name}')" 
+                          class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                    <i class="fas fa-edit ml-1"></i>
+                    ערוך
+                  </button>
+                  <button onclick="deleteAgent(\${agent.id}, '\${agent.name}')" 
+                          class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-bold text-sm">
+                    <i class="fas fa-trash ml-1"></i>
+                    מחק
+                  </button>
+                </div>
+              </div>
+            \`).join('');
+          } catch (error) {
+            console.error('Failed to load agents:', error);
+            alert('שגיאה בטעינת סוכנים!');
+          }
+        }
+        
+        async function addAgent() {
+          const name = document.getElementById('newAgentName').value.trim();
+          if (!name) {
+            alert('אנא הזן שם סוכן!');
+            return;
+          }
+          
+          try {
+            await axios.post('/api/agents', { name });
+            alert('הסוכן נוסף בהצלחה! ✅');
+            document.getElementById('newAgentName').value = '';
+            loadAgents();
+          } catch (error) {
+            console.error('Failed to add agent:', error);
+            alert('שגיאה בהוספת סוכן!');
+          }
+        }
+        
+        async function editAgent(id, currentName) {
+          const newName = prompt('שם חדש לסוכן:', currentName);
+          if (!newName || newName.trim() === '') return;
+          
+          try {
+            await axios.put('/api/agents/' + id, { name: newName });
+            alert('הסוכן עודכן בהצלחה! ✅');
+            loadAgents();
+          } catch (error) {
+            console.error('Failed to update agent:', error);
+            alert('שגיאה בעדכון סוכן!');
+          }
+        }
+        
+        async function deleteAgent(id, name) {
+          if (!confirm('בטוח למחוק את הסוכן "' + name + '"?\\n\\nשים לב: לא ניתן למחוק סוכן עם תמחורים או עסקאות קיימות!')) {
+            return;
+          }
+          
+          try {
+            await axios.delete('/api/agents/' + id);
+            alert('הסוכן נמחק בהצלחה! ✅');
+            loadAgents();
+          } catch (error) {
+            if (error.response && error.response.data) {
+              const data = error.response.data;
+              alert('❌ לא ניתן למחוק סוכן!\\n\\n' +
+                    'לסוכן יש:\\n' +
+                    '• ' + data.pricings + ' תמחורים\\n' +
+                    '• ' + data.deals + ' עסקאות\\n\\n' +
+                    'מחק תחילה את התמחורים והעסקאות.');
+            } else {
+              console.error('Failed to delete agent:', error);
+              alert('שגיאה במחיקת סוכן!');
+            }
+          }
+        }
+        
+        // Handle Enter key in input
+        document.getElementById('newAgentName').addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            addAgent();
+          }
+        });
+        
+        loadAgents();
       </script>
     </body>
     </html>
