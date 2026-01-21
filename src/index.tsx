@@ -905,7 +905,6 @@ app.get('/pricings', (c) => {
       <title>כל התמחורים</title>
       <script src="https://cdn.tailwindcss.com"></script>
       <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
-      <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
     </head>
     <body class="bg-gray-100 p-2 md:p-4">
       <div class="max-w-6xl mx-auto">
@@ -928,10 +927,12 @@ app.get('/pricings', (c) => {
       </div>
       
       <script>
+        window.addEventListener('load', loadPricings);
+        
         async function loadPricings() {
           try {
-            const response = await axios.get('/api/pricings');
-            const pricings = response.data;
+            const response = await fetch('/api/pricings');
+            const pricings = await response.json();
             
             const container = document.getElementById('pricingsList');
             if (pricings.length === 0) {
@@ -975,7 +976,7 @@ app.get('/pricings', (c) => {
                   '</div>' +
                 '</div>' +
                 '<div class="flex flex-wrap gap-2 pt-4 border-t">' +
-                  '<button onclick="editSharedPricing(' + pricing.id + ', \'' + pricing.agent_name + '\')" ' +
+                  '<button onclick="editSharedPricing(' + pricing.id + ', \\'' + pricing.agent_name + '\\')" ' +
                     'class="flex-1 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm">' +
                     '<i class="fas fa-edit ml-1"></i> ערוך' +
                   '</button>' +
@@ -1006,8 +1007,9 @@ app.get('/pricings', (c) => {
           
           try {
             // Get agent ID
-            const agentsResponse = await axios.get('/api/agents');
-            const agent = agentsResponse.data.find(a => a.name === agentName);
+            const agentsResponse = await fetch('/api/agents');
+            const agents = await agentsResponse.json();
+            const agent = agents.find(a => a.name === agentName);
             
             if (!agent) {
               alert('סוכן לא נמצא!');
@@ -1015,8 +1017,10 @@ app.get('/pricings', (c) => {
             }
             
             // Duplicate pricing
-            await axios.post('/api/pricings/' + pricingId + '/duplicate', {
-              agent_id: agent.id
+            await fetch('/api/pricings/' + pricingId + '/duplicate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ agent_id: agent.id })
             });
             
             alert('התמחור שוכפל בהצלחה!');
@@ -1039,8 +1043,6 @@ app.get('/pricings', (c) => {
             alert('שגיאה במחיקה!');
           }
         }
-        
-        loadPricings();
       </script>
     </body>
     </html>

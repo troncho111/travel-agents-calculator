@@ -186,7 +186,6 @@ function removeItem(index) {
 }
 
 function setMarkup(percent) {
-  // 🎭 הטריק הפסיכולוגי: מציג percent, אבל מחשב percent + 2
   document.getElementById('markup').value = percent;
   recalculate();
 }
@@ -209,11 +208,11 @@ function recalculate() {
   document.getElementById('totalCost').textContent = totalInBase.toFixed(2);
   document.getElementById('totalCurrency').textContent = baseCurrency;
   
-  // Calculate final price
-  const markupDisplay = parseFloat(document.getElementById('markup').value) || 0;
-  // 🎭 הטריק: מוסיף +2% לחישוב האמיתי
-  const markupReal = markupDisplay + 2;
-  const finalPrice = totalInBase * (1 + markupReal / 100);
+  // Calculate final price with correct markup formula
+  // Markup formula: finalPrice = cost / (1 - markup%)
+  // This ensures the profit is exactly markup% of the final price
+  const markup = parseFloat(document.getElementById('markup').value) || 0;
+  const finalPrice = totalInBase / (1 - markup / 100);
   const profit = finalPrice - totalInBase;
   
   document.getElementById('profit').textContent = profit.toFixed(2);
