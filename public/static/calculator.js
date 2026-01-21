@@ -232,19 +232,36 @@ function recalculate() {
   document.getElementById('finalPrice').textContent = finalPrice.toFixed(2);
   document.getElementById('finalCurrency').textContent = baseCurrency;
   
-  // Calculate ILS price
-  const priceILS = finalPrice * ilsRate;
+  // Calculate ILS price based on base currency
+  let currentILSRate = ilsRate; // Default EUR rate
+  let priceILS = 0;
+  
+  if (baseCurrency === 'ILS') {
+    priceILS = finalPrice;
+    currentILSRate = 1;
+  } else if (baseCurrency === 'EUR') {
+    priceILS = finalPrice * ilsRate;
+    currentILSRate = ilsRate;
+  } else {
+    // For USD, GBP, or other currencies - calculate via exchange rates
+    const baseToILS = exchangeRates['ILS'] || 1;
+    const eurToBase = exchangeRates[baseCurrency] || 1;
+    currentILSRate = baseToILS / eurToBase;
+    priceILS = finalPrice * currentILSRate;
+  }
+  
   document.getElementById('priceILS').innerHTML = `
     <i class="fas fa-shekel-sign ml-1"></i>
     💰 המחיר ללקוח בשקלים: 
     <span class="text-4xl">₪${priceILS.toFixed(2)}</span>
     <br>
-    <span class="text-sm text-gray-600">(שער המחאות: ${ilsRate.toFixed(4)})</span>
+    <span class="text-sm text-gray-600">(שער: ${currentILSRate.toFixed(4)})</span>
   `;
 }
 
 function calculateInstallments() {
   const finalPrice = parseFloat(document.getElementById('finalPrice').textContent) || 0;
+  const baseCurrency = document.getElementById('baseCurrency').value;
   const installments = parseInt(document.getElementById('installments').value) || 1;
   
   if (finalPrice === 0) {
@@ -252,7 +269,19 @@ function calculateInstallments() {
     return;
   }
   
-  const priceILS = finalPrice * ilsRate;
+  // Calculate ILS price based on base currency
+  let priceILS = 0;
+  if (baseCurrency === 'ILS') {
+    priceILS = finalPrice;
+  } else if (baseCurrency === 'EUR') {
+    priceILS = finalPrice * ilsRate;
+  } else {
+    // For USD, GBP, or other currencies
+    const baseToILS = exchangeRates['ILS'] || 1;
+    const eurToBase = exchangeRates[baseCurrency] || 1;
+    const currentILSRate = baseToILS / eurToBase;
+    priceILS = finalPrice * currentILSRate;
+  }
   
   let interestRate = 0;
   let totalWithInterest = priceILS;
