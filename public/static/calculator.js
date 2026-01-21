@@ -137,11 +137,22 @@ function loadCalculatorForm() {
 
 function renderItems() {
   const container = document.getElementById('itemsContainer');
-  container.innerHTML = items.map((item, index) => `
+  container.innerHTML = items.map((item, index) => {
+    // Dynamic placeholder based on item name
+    let placeholder = 'פרטים';
+    if (item.name.includes('טיסה') || item.name.includes('טיסות')) {
+      placeholder = 'למשל: British Airways BA123, 17-24/04';
+    } else if (item.name.includes('מלון')) {
+      placeholder = 'למשל: שם המלון, צ\'ק-אין 17/04, צ\'ק-אאוט 24/04';
+    } else if (item.name.includes('כרטיס')) {
+      placeholder = 'למשל: קטגוריה, מגרש/אזור, תאריך';
+    }
+    
+    return `
     <div class="border border-gray-200 rounded-lg p-4 bg-gray-50">
       <div class="flex justify-between items-center mb-3">
         <input type="text" value="${item.name}" 
-               onchange="items[${index}].name = this.value"
+               onchange="items[${index}].name = this.value; renderItems()"
                class="font-bold text-lg border-0 bg-transparent flex-1" 
                placeholder="שם המרכיב">
         <button type="button" onclick="removeItem(${index})" 
@@ -152,7 +163,7 @@ function renderItems() {
       <textarea onchange="items[${index}].details = this.value" 
                 class="w-full border rounded p-2 text-sm mb-2" 
                 rows="2" 
-                placeholder="פרטים (למשל: British Airways BA123, 17-24/04)">${item.details}</textarea>
+                placeholder="${placeholder}">${item.details}</textarea>
       <div class="grid grid-cols-2 gap-2">
         <input type="number" value="${item.amount}" 
                onchange="items[${index}].amount = parseFloat(this.value) || 0; recalculate()"
@@ -160,14 +171,15 @@ function renderItems() {
                placeholder="סכום" step="0.01">
         <select onchange="items[${index}].currency = this.value; recalculate()"
                 class="border rounded p-2">
-          <option value="EUR" ${item.currency === 'EUR' ? 'selected' : ''}>אירו (€)</option>
-          <option value="USD" ${item.currency === 'USD' ? 'selected' : ''}>דולר ($)</option>
-          <option value="GBP" ${item.currency === 'GBP' ? 'selected' : ''}>פאונד (£)</option>
-          <option value="ILS" ${item.currency === 'ILS' ? 'selected' : ''}>שקל (₪)</option>
+          <option value="EUR" \${item.currency === 'EUR' ? 'selected' : ''}>אירו (€)</option>
+          <option value="USD" \${item.currency === 'USD' ? 'selected' : ''}>דולר ($)</option>
+          <option value="GBP" \${item.currency === 'GBP' ? 'selected' : ''}>פאונד (£)</option>
+          <option value="ILS" \${item.currency === 'ILS' ? 'selected' : ''}>שקל (₪)</option>
         </select>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function addItem() {
