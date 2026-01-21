@@ -69,8 +69,14 @@ function loadCalculatorForm() {
       <!-- Total Cost -->
       <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
         <div class="text-lg font-bold mb-2">עלות כוללת:</div>
-        <div class="text-3xl font-bold text-blue-900">
+        <div class="text-3xl font-bold text-blue-900 mb-3">
           <span id="totalCost">0.00</span> <span id="totalCurrency">EUR</span>
+        </div>
+        <div class="flex gap-2 flex-wrap">
+          <button type="button" onclick="changeTotalCurrency('EUR')" class="px-3 py-1 bg-blue-100 hover:bg-blue-200 rounded text-sm font-bold">€ אירו</button>
+          <button type="button" onclick="changeTotalCurrency('USD')" class="px-3 py-1 bg-green-100 hover:bg-green-200 rounded text-sm font-bold">$ דולר</button>
+          <button type="button" onclick="changeTotalCurrency('GBP')" class="px-3 py-1 bg-purple-100 hover:bg-purple-200 rounded text-sm font-bold">£ פאונד</button>
+          <button type="button" onclick="changeTotalCurrency('ILS')" class="px-3 py-1 bg-orange-100 hover:bg-orange-200 rounded text-sm font-bold">₪ שקל</button>
         </div>
       </div>
       
@@ -199,6 +205,12 @@ function removeItem(index) {
 
 function setMarkup(percent) {
   document.getElementById('markup').value = percent;
+  recalculate();
+}
+
+function changeTotalCurrency(newCurrency) {
+  const baseCurrency = document.getElementById('baseCurrency').value;
+  document.getElementById('baseCurrency').value = newCurrency;
   recalculate();
 }
 
